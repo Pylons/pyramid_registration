@@ -51,3 +51,6 @@ class SQLARegistrationBackend(object):
     def activate(self, token):
         # whatever
         pass
+
+    def verify_access_token(self, token):
+        pass
