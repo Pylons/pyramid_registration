@@ -19,5 +19,5 @@ class IRegistrationBackend(Interface):
 
     def verify_access_token(self, token):
         """ Verify access token
-        Return the user object if valid,
+        Return the user id if valid,
         None otherwise. """
