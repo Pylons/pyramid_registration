@@ -47,6 +47,21 @@ def _purge_old_tokens(db, user_id, timedelta=None):
             },
             safe=True)
 
+def _store_access_token(db, user_id, token):
+    """ Store given access_token in DB. Purge any older than 30 days.
+    Note: May be race conditions """
+
+    _purge_old_tokens(db, user_id)
+
+    # Push the new token
+    db.users.update({"_id":user_id},
+            {"$push":
+                {"access_tokens":
+                    {"token":token,"timestamp":datetime.datetime.utcnow()}
+                }
+            },
+            safe=True)
+
 class MongoDBRegistrationBackend(object):
     """ MongoDB implementation of RegistrationBackend """
     implements(IRegistrationBackend)
@@ -107,4 +122,19 @@ class MongoDBRegistrationBackend(object):
         if user_doc:
             return str(user_doc["_id"])
         return None
+
+
+    def issue_access_token(self, user_id):
+        """ Create a unique access_token and associate it with the user in the DB,
+        returning resulting string """
+
+        # XXX potential race between checking & generation, but very unlikely to
+        # ever hit. Note, we do have a unique index on token, so this should at
+        # worst throw an exception, not actually end up with duplicates
+        while True:
+            token = _generate_access_token()
+            if not _lookup_access_token(self.db, token): break
+        _store_access_token(self.db, user_id, token)
+
+        return token
 

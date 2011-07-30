@@ -21,3 +21,8 @@ class IRegistrationBackend(Interface):
         """ Verify access token
         Return the user id if valid,
         None otherwise. """
+
+    def issue_access_token(self, user_id):
+        """ Generate a new random access token
+        and associate it with the user_id in the database.
+        """
