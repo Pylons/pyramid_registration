@@ -26,7 +26,5 @@ def main(global_config, **settings):
     config.add_view(simple_login, 'simple_login')
     config.set_authentication_policy(PyramidRegAuthenticationPolicy(backend))
 
-    # accept default views
-    config.scan('lolreg.views')
     return config.make_wsgi_app()
 
