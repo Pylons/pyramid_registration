@@ -17,7 +17,8 @@ from mock import Mock, patch
 from pyramid import testing
 
 class MongoDBRegistrationBackendUnitTests(unittest.TestCase):
-    """ Unit tests for MongoDBRegistrationBackend class """
+    """ Unit tests for MongoDBRegistrationBackend class. These do not talk to a
+    real MongoDB server, instead mocking the PyMongo driver interactions. """
 
     def setUp(self):
         self.settings = {"mongodb.url":"mongodb://localhost",
@@ -111,6 +112,25 @@ class MongoDBRegistrationBackendUnitTests(unittest.TestCase):
             db.users.update.assert_called_once_with({"access_tokens.token":"token"},
                     {"$set":{"activated_timestamp":utcnow}}, safe=True)
 
+    @patch("pymongo.Connection")
+    def test_issue_access_token(self, connection_mock):
+        conn = connection_mock.instance()
+        connection_mock.return_value = conn
+        db = conn[self.settings["mongodb.db_name"]]
+        backend = MongoDBRegistrationBackend(self.settings, self.config)
+
+        uid = ObjectId()
+        token = "token"
+        with patch('pyramid_registration.mongodb._generate_access_token'):
+            mongodb._generate_access_token.return_value = token
+            def side_effect(*args):
+                def second_call(*args):
+                    return {"_id":uid}
+                mongodb._generate_access_token.side_effect = second_call
+                return None
+            db.users.find_one.side_effect = side_effect
+            backend.issue_access_token(uid)
+            db.users.find_one.assert_called_with({"access_tokens.token":token})
 
 
 
