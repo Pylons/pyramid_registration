@@ -136,14 +136,23 @@ class MongoDBRegistrationBackend(object):
         """ Mark account as activated. For simple auth (username & password)
         this may only follow email verification. For external auth e.g.
         Facebook Connect, Google OpenID, one may choose to trust the provider
-        and automatically mark the account as activated. """
+        and automatically mark the account as activated.
+
+        ``token``
+        Token linked to the account to activate.
+
+        """
         self.db.users.update({"linked_accounts.token":token},
                 {"$set":{"activated_timestamp":datetime.datetime.utcnow()}},
                 safe=True)
 
     def verify_access_token(self, token):
         """ Purge expired tokens for this user, then look up against current tokens
-        to check validity """
+        to check validity
+
+        ``token``
+        The token to verify.
+        """
         user_doc = _lookup_access_token(self.db, token)
         if not user_doc: return None
         _purge_old_tokens(self.db, user_doc["_id"])
@@ -156,7 +165,12 @@ class MongoDBRegistrationBackend(object):
 
     def issue_access_token(self, user_id):
         """ Create a unique access_token and associate it with the user in the DB,
-        returning resulting string """
+        returning resulting string
+
+        ``user_id``
+        User ID (of type ObjectID) of the user account to issue and access token
+        for.
+        """
 
         # XXX potential race between checking & generation, but very unlikely to
         # ever hit. Note, we do have a unique index on token, so this should at
