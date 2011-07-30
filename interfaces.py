@@ -1,4 +1,4 @@
-from zope.interfaces import Interface
+from zope.interface import Interface
 
 class IRegistrationBackend(Interface):
 

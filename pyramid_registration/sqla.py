@@ -12,7 +12,7 @@ from sqlalchemy.orm import sessionmaker
 from zope.sqlalchemy import ZopeTransactionExtension
 from zope.interface import implements
 
-from pyramid_registration.interfaces import IRegistrationBackend
+from interfaces import IRegistrationBackend
 
 DBSession = scoped_session(sessionmaker(extension=ZopeTransactionExtension()))
 Base = declarative_base()
