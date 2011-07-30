@@ -103,4 +103,8 @@ class MongoDBRegistrationBackend(object):
         if not user_doc: return None
         _purge_old_tokens(self.db, user_doc["_id"])
 
-        return _lookup_access_token(self.db, token)
+        user_doc = _lookup_access_token(self.db, token)
+        if user_doc:
+            return str(user_doc["_id"])
+        return None
+

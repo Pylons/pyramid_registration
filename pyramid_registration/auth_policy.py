@@ -13,9 +13,7 @@ class PyramidRegistrationAuthenticationPolicy(object):
     def authenticated_userid(self, request):
         # use self.backend to figure out who the guy is and if he exists
         access_token = self.unauthenticated_userid(request)
-        user_obj = self.backend.verify_access_token(access_token)
-        if not user_obj: return None
-        return user_obj.get_id()
+        return self.backend.verify_access_token(access_token)
 
     def remember(self, request, principal, **kw):
         """ No-Op """
