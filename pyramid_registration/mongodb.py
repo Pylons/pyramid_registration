@@ -1,10 +1,17 @@
+import colander
 import datetime
 import pymongo
 import random
+import string
 
 from pyramid.events import NewRequest
 from pyramid_registration.interfaces import IRegistrationBackend
 from zope.interface import implements
+
+class AddUserSchema(colander.MappingSchema):
+    regex = r'^[A-Za-z](?=[A-Za-z0-9_.]{3,31}$)[a-zA-Z0-9_]*\.?[a-zA-Z0-9_]*$'
+    username = colander.SchemaNode(colander.String(),
+        validator=colander.Regex(regex, msg="Use 4 to 32 characters and start with a letter. You may use letters, numbers, underscores, and one dot (.)"))
 
 def _lookup_access_token(db, access_token):
     """ Check whether given token already exists in DB """
@@ -61,11 +68,9 @@ class MongoDBRegistrationBackend(object):
         # Make request.db be a reference to MongoDB Database handle
         def add_mongo_db(event):
             settings = event.request.registry.settings
-            url = settings['mongodb.url']
             db_name = settings['mongodb.db_name']
             db = settings['mongodb_conn'][db_name]
             event.request.db = db
-        db_uri = settings['mongodb.url']
         conn = pymongo.Connection(db_uri)
         self.db = conn[settings["mongodb.db_name"]]
         def create_indexes(connection):
@@ -92,14 +97,49 @@ class MongoDBRegistrationBackend(object):
         config.registry.settings['mongodb_conn'] = conn
         config.add_subscriber(add_mongo_db, NewRequest)
 
-    def add_user(self, **kw):
-        pass
+    def add_user(self, struct):
+        """ Link an external account to this user """
 
-    def add_group(self, whatever):
-        pass
+        # may not exist
+        user_doc = db.users.find_one({"linked_accounts.id":account_id})
+
+        if user_doc:
+            user_id = user_doc["_id"]
+            username = user_doc["username"]
+            # Has the account already been linked?
+            if ({"id":account_id,"type":account_type} in
+                    user_doc.get("linked_accounts", [])):
+                return user_id
+        else:
+            user_id = ObjectId()
+            username = make_temp_username(db)
+
+
+        r = db.users.update({"_id":user_id},
+                {
+                    "$set":{
+                        "suggested_username":suggested_username,
+                        "username":username,
+                        "first_name":first_name,
+                        "last_name":last_name,
+                    },
+                    "$push":{
+                        "linked_accounts":{"id":account_id, "type":account_type}
+                    }
+                },
+            upsert=True, safe=True)
+        if r.get("upserted"):
+            user_id = r["upserted"]
+        return user_id
 
     def activate(self, token):
-        pass
+        """ Mark account as activated. For simple auth (username & password)
+        this may only follow email verification. For external auth e.g.
+        Facebook Connect, Google OpenID, one may choose to trust the provider
+        and automatically mark the account as activated. """
+        self.db.users.update({"linked_accounts.token":token},
+                {"$set":{"activated_timestamp":datetime.datetime.utcnow()}},
+                safe=True)
 
     def verify_access_token(self, token):
         """ Purge expired tokens for this user, then look up against current tokens
