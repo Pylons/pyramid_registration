@@ -3,7 +3,14 @@ from zope.interface import Interface
 class IRegistrationBackend(Interface):
 
     def __init__(self, config, settings):
-        """ Must pass in configurator and settings objects """
+        """ Must pass in configurator and settings objects
+
+        ``config``
+        An instance of :class:`pyramid.config.Configurator`
+
+        ``settings``
+        An instance of :class:`pyramid.settings.Settings`
+        """
 
     def add_user(self, struct):
         """ Add a user to the storage.
