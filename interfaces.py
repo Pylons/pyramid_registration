@@ -13,3 +13,8 @@ class IRegistrationBackend(Interface):
     def activate(self, token):
         """ Mark user as activated.
         TODO: define params """
+
+    def verify_access_token(self, token):
+        """ Verify access token
+        Return the user object if valid,
+        None otherwise. """
