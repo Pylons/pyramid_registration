@@ -1,3 +1,4 @@
+import bcrypt
 import colander
 import datetime
 import pymongo
@@ -11,7 +12,23 @@ from zope.interface import implements
 class AddUserSchema(colander.MappingSchema):
     regex = r'^[A-Za-z](?=[A-Za-z0-9_.]{3,31}$)[a-zA-Z0-9_]*\.?[a-zA-Z0-9_]*$'
     username = colander.SchemaNode(colander.String(),
-        validator=colander.Regex(regex, msg="Use 4 to 32 characters and start with a letter. You may use letters, numbers, underscores, and one dot (.)"))
+        validator=colander.Regex(regex, msg="Use 4 to 32 characters and start
+            with a letter. You may use letters, numbers, underscores, and one
+            dot (.)"), missing=None)
+    email = colander.SchemaNode(colander.String(), validator=colander.Email(),
+            missing=None)
+    password = colander.SchemaNode(colander.String(), missing=None)
+    facebook_id = colander.SchemaNode(colander.String(), missing=None)
+    facebook_first_name = colander.SchemaNode(colander.String(), missing=None)
+    facebook_last_name = colander.SchemaNode(colander.String(), missing=None)
+
+def _hash_pw(pw):
+    """ Hash a plaintext using Blowfish encryption for storage """
+    return bcrypt.hashpw(pw, bcrypt.gensalt())
+
+def _check_pw(plaintext, hashed):
+    """ Check a plaintext password against a Blowfish hash """
+    return bcrypt.hashpw(plaintext, hashed) == hashed
 
 def _lookup_access_token(db, access_token):
     """ Check whether given token already exists in DB """
@@ -100,37 +117,32 @@ class MongoDBRegistrationBackend(object):
     def add_user(self, struct):
         """ Link an external account to this user """
 
-        # may not exist
-        user_doc = db.users.find_one({"linked_accounts.id":account_id})
+        schema = AddUserSchema()
+        # invalid exception will bubble up for caller to handle
+        d = schema.deserialize(struct)
 
-        if user_doc:
-            user_id = user_doc["_id"]
-            username = user_doc["username"]
-            # Has the account already been linked?
-            if ({"id":account_id,"type":account_type} in
-                    user_doc.get("linked_accounts", [])):
-                return user_id
-        else:
-            user_id = ObjectId()
-            username = make_temp_username(db)
+        new_user = {}
+        username = d["username"]
+        if not username:
+            username = make_temp_username()
+        new_user["username"] = username
 
+        if d["password"]:
+            new_user["password"] = _hash_pw(d["password"])
 
-        r = db.users.update({"_id":user_id},
-                {
-                    "$set":{
-                        "suggested_username":suggested_username,
-                        "username":username,
-                        "first_name":first_name,
-                        "last_name":last_name,
-                    },
-                    "$push":{
-                        "linked_accounts":{"id":account_id, "type":account_type}
-                    }
-                },
-            upsert=True, safe=True)
-        if r.get("upserted"):
-            user_id = r["upserted"]
-        return user_id
+        if d["email"]:
+            new_user["email"] = d["email"]
+
+        if d["facebook_id"]:
+            linked_account = {"account_type":"fb",
+                    "account_id":d["facebook_id"]}
+            if d["facebook_first_name"]:
+                linked_account["first_name"] = d["facebook_first_name"]
+            if d["facebook_last_name"]:
+                linked_account["last_name"] = d["facebook_last_name"]
+            new_user["linked_accounts":[linked_account]]
+
+        self.db.insert(new_user, safe=True)
 
     def activate(self, token):
         """ Mark account as activated. For simple auth (username & password)
