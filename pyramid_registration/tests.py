@@ -76,6 +76,27 @@ class MongoDBRegistrationBackendTests(unittest.TestCase):
         db.users.insert.assert_called_with({"username":struct["username"],"email":struct["email"]},
                 safe=True)
 
+    @patch("pymongo.Connection")
+    def test_verify_access_token(self, connection_mock):
+        conn = connection_mock.instance()
+        connection_mock.return_value = conn
+        db = conn[self.settings["mongodb.db_name"]]
+        backend = MongoDBRegistrationBackend(self.settings, self.config)
+
+        # Test that a non-existant token will not verify
+        db.users.find_one.return_value = None
+        self.assertFalse(backend.verify_access_token("token"))
+
+        # Test that a matching token will return a stringified ID
+        with patch("pyramid_registration.mongodb._purge_old_tokens"):
+
+            oid = ObjectId()
+            db.users.find_one.return_value = {"_id":oid}
+            self.assertEquals(backend.verify_access_token("token"), str(oid))
+
+            # Test that verify has tried to purge the expired tokens
+            mongodb._purge_old_tokens.assert_called_once_with(db, oid)
+
 
 
 

@@ -27,7 +27,8 @@ class AddUserSchema(colander.MappingSchema):
         validator=username_validator, missing=None)
     email = colander.SchemaNode(colander.String(), validator=colander.Email(),
             missing=None)
-    password = colander.SchemaNode(colander.String(), missing=None)
+    password = colander.SchemaNode(colander.String(),
+            validator=colander.Length(min=6), missing=None)
     facebook_id = colander.SchemaNode(colander.String(), missing=None)
     facebook_first_name = colander.SchemaNode(colander.String(), missing=None)
     facebook_last_name = colander.SchemaNode(colander.String(), missing=None)
@@ -40,9 +41,12 @@ def _check_pw(plaintext, hashed):
     """ Check a plaintext password against a Blowfish hash """
     return bcrypt.hashpw(plaintext, hashed) == hashed
 
-def _lookup_access_token(db, access_token):
+def _lookup_access_token(db, access_token, must_be_activated=False):
     """ Check whether given token already exists in DB """
-    return db.users.find_one({"access_tokens.token":access_token})
+    q = {"access_tokens.token":access_token}
+    if must_be_activated:
+        q["access_tokens.activated_timestamp"] = {"$lte":datetime.datetime.utcnow()}
+    return db.users.find_one(must_be_activated)
 
 def _generate_access_token():
     """ Generate new access_token """
@@ -59,12 +63,13 @@ def _generate_temp_username():
 def _purge_old_tokens(db, user_id, timedelta=None):
     # pull any tokens older than timedelta.
     if not timedelta:
+        # XXX Make timedelta configurable
         timedelta = datetime.timedelta(days=30)
     expiry = datetime.datetime.utcnow() - timedelta
     db.users.update({"_id":user_id},
             {"$pull":{
                 "access_tokens":
-                    {"timestamp":
+                    {"created_timestamp":
                         {"$lte":expiry}
                     }
                 }
@@ -81,7 +86,9 @@ def _store_access_token(db, user_id, token):
     db.users.update({"_id":user_id},
             {"$push":
                 {"access_tokens":
-                    {"token":token,"timestamp":datetime.datetime.utcnow()}
+                    {"token":token,
+                     "created_timestamp":datetime.datetime.utcnow()
+                    }
                 }
             },
             safe=True)
@@ -141,7 +148,6 @@ class MongoDBRegistrationBackend(object):
                 username=struct.get("username"))
         # invalid exception will bubble up for caller to handle
         d = schema.deserialize(struct)
-
         new_user = {}
         username = d["username"]
         if not username:
@@ -175,13 +181,14 @@ class MongoDBRegistrationBackend(object):
         Token linked to the account to activate.
 
         """
-        self.db.users.update({"linked_accounts.token":token},
+        self.db.users.update({"access_tokens.token":token},
                 {"$set":{"activated_timestamp":datetime.datetime.utcnow()}},
                 safe=True)
 
     def verify_access_token(self, token):
         """ Purge expired tokens for this user, then look up against current tokens
-        to check validity
+        to check validity. Token must be activated for it to be considered
+        valid. Tokens may be activated via the activate() method.
 
         ``token``
         The token to verify.
@@ -190,7 +197,7 @@ class MongoDBRegistrationBackend(object):
         if not user_doc: return None
         _purge_old_tokens(self.db, user_doc["_id"])
 
-        user_doc = _lookup_access_token(self.db, token)
+        user_doc = _lookup_access_token(self.db, token, must_be_activated=True)
         if user_doc:
             return str(user_doc["_id"])
         return None
@@ -198,7 +205,9 @@ class MongoDBRegistrationBackend(object):
 
     def issue_access_token(self, user_id):
         """ Create a unique access_token and associate it with the user in the DB,
-        returning resulting string
+        returning resulting string. Note that the token is issued in an
+        unactivated state. It must be explicitly activated via the activate()
+        method.
 
         ``user_id``
         User ID (of type ObjectID) of the user account to issue and access token
