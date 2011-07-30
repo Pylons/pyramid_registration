@@ -5,7 +5,7 @@ from pyramid_registration.interfaces import IRegistrationBackend
 class MongoDBRegistrationBackend(object):
     """ MongoDB implementation of RegistrationBackend """
     implements(IRegistrationBackend)
-    
+
     def __init__(self, settings):
         pass
 
@@ -16,4 +16,7 @@ class MongoDBRegistrationBackend(object):
         pass
 
     def activate(self, token):
+        pass
+
+    def verify_access_token(self, token):
         pass
