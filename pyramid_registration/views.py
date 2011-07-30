@@ -1,12 +1,38 @@
-# lolreg.views package
-# -------------------------------------------------------------
+""" Views """
 
-from pyramid.view import view_config
+def facebook_registration(request):
+    """ /registration/facebook view callable.
+    
+    If supplied with an access_token request parameter, assumes client has
+    already performed the FB login dance.
 
-@view_config(route_name='lolreg.register')
-def register_form(request):
+    If not, sets upt the server-driven browser-redirect dance to authenticate
+    use with FB.
+
+
+    """
     pass
 
-@view_config(route_name='lolreg.activate')
-def activate(request):
-    request.context.activate(request.POST['token'])
+def facebook_login(request):
+    """ /login/facebook view callable.
+
+    Takes a Facebook access token, checks for validity and if accepted 
+    issues a usable token to client.
+    """
+
+def simple_registration(request):
+    """ /registration/simple view callable.
+
+    Register a user with username and password.
+
+    TODO: Also collect email by default?
+    """
+    pass
+
+
+def simple_login(request):
+    """ /login/simple view callable.
+
+    Takes a username & password, checks for validity and if accepted 
+    issues a usable token to client.
+    """
