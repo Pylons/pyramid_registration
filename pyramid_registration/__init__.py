@@ -19,7 +19,7 @@ def main(global_config, **settings):
     config.add_route('facebook_registration', '/registration/facebook', factory=backend)
     config.add_route('facebook_login', '/login/facebook', factory=backend)
     config.add_route('simple_registration', '/registration/simple', factory=backend)
-    ronfig.add_route('simple_login', '/login/simple', factory=backend)
+    config.add_route('simple_login', '/login/simple', factory=backend)
     config.add_view(facebook_registration, 'facebook_registration')
     config.add_view(simple_registration, 'simple_registration')
     config.add_view(facebook_login, 'facebook_login')
