@@ -46,7 +46,7 @@ def _lookup_access_token(db, access_token, must_be_activated=False):
     q = {"access_tokens.token":access_token}
     if must_be_activated:
         q["access_tokens.activated_timestamp"] = {"$lte":datetime.datetime.utcnow()}
-    return db.users.find_one(must_be_activated)
+    return db.users.find_one(q)
 
 def _generate_access_token():
     """ Generate new access_token """
