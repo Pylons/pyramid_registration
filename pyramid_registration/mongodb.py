@@ -182,7 +182,7 @@ class MongoDBRegistrationBackend(object):
 
         """
         self.db.users.update({"access_tokens.token":token},
-                {"$set":{"activated_timestamp":datetime.datetime.utcnow()}},
+                {"$set":{"access_tokens.$.activated_timestamp":datetime.datetime.utcnow()}},
                 safe=True)
 
     def verify_access_token(self, token):

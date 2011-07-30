@@ -110,7 +110,7 @@ class MongoDBRegistrationBackendUnitTests(unittest.TestCase):
             datetime.datetime.utcnow.return_value = utcnow
             backend.activate("token")
             db.users.update.assert_called_once_with({"access_tokens.token":"token"},
-                    {"$set":{"activated_timestamp":utcnow}}, safe=True)
+                    {"$set":{"access_tokens.$.activated_timestamp":utcnow}}, safe=True)
 
     @patch("pymongo.Connection")
     def test_issue_access_token(self, connection_mock):
@@ -154,7 +154,6 @@ class MongoDBRegistrationBackendIntegrationTests(unittest.TestCase):
         self.settings["mongodb_conn"].drop_database(self.TEST_DB_NAME)
 
     def test_add_user(self):
-        # Test bad username
         backend = MongoDBRegistrationBackend(self.settings, self.config)
         # Test good, available username, writing it to DB
         struct = {"username":"goodusername", "password":"password", "email":"testemail@example.com"}
@@ -163,6 +162,54 @@ class MongoDBRegistrationBackendIntegrationTests(unittest.TestCase):
         self.assertEquals(user_doc["username"], struct["username"])
         self.assertEquals(user_doc["email"], struct["email"])
         self.assertNotEquals(user_doc["password"], struct["password"])
+        # Test that we cannot add the same username again
+        self.assertRaises(colander.Invalid, backend.add_user, struct)
+
+    def test_activation(self):
+        backend = MongoDBRegistrationBackend(self.settings, self.config)
+        struct = {"username":"goodusername", "password":"password", "email":"testemail@example.com"}
+        backend.add_user(struct)
+        user_doc = self.db.users.find_one({"username":struct["username"]})
+        self.assertEquals(user_doc["username"], struct["username"])
+        self.assertEquals(user_doc["email"], struct["email"])
+        self.assertNotEquals(user_doc["password"], struct["password"])
+
+        # User has been added - verify it has no activated tokens
+        for token in user_doc.get("access_tokens", []):
+            self.assertFalse(token.get("activated_timestamp"))
+
+        # Issue a token for this user
+        access_token = backend.issue_access_token(user_doc["_id"])
+
+        # Verify user has this access token in their user document
+        user_doc = self.db.users.find_one({"username":struct["username"]})
+        doc_token = False
+        for token in user_doc.get("access_tokens", []):
+            if token.get("token") == access_token:
+                doc_token = token
+                break
+
+        self.assertEquals(doc_token["token"], access_token)
+        # Verify this token is not activated
+        self.assertFalse(doc_token.get("activated_timestamp"))
+        # Ensure verify_access_token on this token returns False
+
+        self.assertFalse(backend.verify_access_token(access_token))
+        # Now activate the token, and assert that the token is marked as
+        # activated in the database.
+        backend.activate(access_token)
+
+        user_doc = self.db.users.find_one({"username":struct["username"]})
+        doc_token = False
+        for token in user_doc.get("access_tokens", []):
+            if token.get("token") == access_token:
+                self.assertTrue(token.get("activated_timestamp"))
+                break
+
+
+        # Ensure verify_access_token on this token returns the user_id
+        userid = backend.verify_access_token(access_token)
+        self.assertEquals(userid, str(user_doc["_id"]))
 
 
 class ViewTests(unittest.TestCase):
