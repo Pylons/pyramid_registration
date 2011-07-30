@@ -77,7 +77,7 @@ class MongoDBRegistrationBackend(object):
             event.request.db = db
         db_uri = settings['mongodb.url']
         conn = pymongo.Connection(db_uri)
-        self.db = settings["mongodb_conn"][settings["mongodb.db_name"]]
+        self.db = conn[settings["mongodb.db_name"]]
         def create_indexes(connection):
             """ Create the indexes.
             See http://api.mongodb.org/python/current/api/pymongo/collection.html#pymongo.collection.Collection.create_index"""
