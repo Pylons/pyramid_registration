@@ -16,14 +16,12 @@ def main(global_config, **settings):
     # with external auth providers (e.g. Facebook) this isn't stricly necessary.
     # "Registration" is to create a new account.
     # "Login" is to exchange some credentials for a valid access token
-    config.add_route('facebook_registration', '/registration/facebook', factory=backend)
-    config.add_route('facebook_login', '/login/facebook', factory=backend)
-    config.add_route('simple_registration', '/registration/simple', factory=backend)
-    config.add_route('simple_login', '/login/simple', factory=backend)
-    config.add_view(facebook_registration, 'facebook_registration')
-    config.add_view(simple_registration, 'simple_registration')
-    config.add_view(facebook_login, 'facebook_login')
-    config.add_view(simple_login, 'simple_login')
+    config.add_route('facebook_registration', '/registration/facebook',
+            view=facebook_registration, factory=backend)
+    config.add_route('facebook_login', '/login/facebook', view=facebook_login, factory=backend)
+    config.add_route('simple_registration', '/registration/simple',
+            view=simple_registration, factory=backend)
+    config.add_route('simple_login', '/login/simple', view=simple_login, factory=backend)
     # XXX _set_authentication_policy will be made public as
     # set_authentication_policy soon.
     config._set_authentication_policy(PyramidRegistrationAuthenticationPolicy(backend))
