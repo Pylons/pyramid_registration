@@ -106,8 +106,10 @@ class MongoDBRegistrationBackend(object):
     """ MongoDB implementation of RegistrationBackend """
     implements(IRegistrationBackend)
 
-    def __init__(self, settings, config):
+    def __call__(self, request):
+        return self
 
+    def __init__(self, settings, config):
         # Make request.db be a reference to MongoDB Database handle
         def add_mongo_db(event):
             settings = event.request.registry.settings
@@ -169,7 +171,7 @@ class MongoDBRegistrationBackend(object):
                 linked_account["last_name"] = d["facebook_last_name"]
             new_user["linked_accounts":[linked_account]]
 
-        self.db.users.insert(new_user, safe=True)
+        r = self.db.users.insert(new_user, safe=True)
 
     def activate(self, token):
         """ Mark account as activated. For simple auth (username & password)
