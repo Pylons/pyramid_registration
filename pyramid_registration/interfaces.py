@@ -2,6 +2,9 @@ from zope.interface import Interface
 
 class IRegistrationBackend(Interface):
 
+    def __init__(self, config, settings):
+        """ Must pass in configurator and settings objects """
+
     def add_user(self, **kw):
         """ Add a user to the storage
         TODO: define params """
