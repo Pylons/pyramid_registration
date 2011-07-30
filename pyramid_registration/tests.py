@@ -132,7 +132,37 @@ class MongoDBRegistrationBackendUnitTests(unittest.TestCase):
             backend.issue_access_token(uid)
             db.users.find_one.assert_called_with({"access_tokens.token":token})
 
+class MongoDBRegistrationBackendIntegrationTests(unittest.TestCase):
+    """ Integration tests for MongoDBRegistrationBackend class. These talk to a
+    real MongoDB server. """
+    TEST_DB_NAME = "mongodbregtest"
+    def setUp(self):
+        from pyramid_registration import main
+        self.config = testing.setUp()
+        # XXX make configurable
+        app = main({}, **{"mongodb.url":"mongodb://localhost",
+            "mongodb.db_name":self.TEST_DB_NAME})
+        from webtest import TestApp
+        self.app = app
+        self.testapp = TestApp(app)
+        self.settings = app.registry.settings
+        self.db = self.settings['mongodb_conn'][self.settings["mongodb.db_name"]]
 
+    def tearDown(self):
+        """ Clear out the application registry """
+        testing.tearDown()
+        self.settings["mongodb_conn"].drop_database(self.TEST_DB_NAME)
+
+    def test_add_user(self):
+        # Test bad username
+        backend = MongoDBRegistrationBackend(self.settings, self.config)
+        # Test good, available username, writing it to DB
+        struct = {"username":"goodusername", "password":"password", "email":"testemail@example.com"}
+        backend.add_user(struct)
+        user_doc = self.db.users.find_one({"username":struct["username"]})
+        self.assertEquals(user_doc["username"], struct["username"])
+        self.assertEquals(user_doc["email"], struct["email"])
+        self.assertNotEquals(user_doc["password"], struct["password"])
 
 
 class ViewTests(unittest.TestCase):
