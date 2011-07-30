@@ -7,6 +7,7 @@ README = open(os.path.join(here, 'README.txt')).read()
 CHANGES = open(os.path.join(here, 'CHANGES.txt')).read()
 
 requires = ['pyramid', 'WebError', 'sqlalchemy', 'pymongo', 'zope.sqlalchemy', 'zope.interface', 'colander']
+test_requires = requires + ["mock"]
 
 setup(name='pyramid_registration',
       version='0.0',
@@ -26,7 +27,7 @@ setup(name='pyramid_registration',
       include_package_data=True,
       zip_safe=False,
       install_requires=requires,
-      tests_require=requires,
+      tests_require=test_requires,
       test_suite="pyramid_registration",
       entry_points = """\
       [paste.app_factory]
