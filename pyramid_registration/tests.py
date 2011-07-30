@@ -1,14 +1,83 @@
+import colander
 import datetime
 import json
+import mongodb
+import pyramid.config
+import pyramid.registry
 import pymongo
 import os
 import unittest
 
+from mongodb import MongoDBRegistrationBackend, _hash_pw, _check_pw
+
 from pymongo.objectid import ObjectId
-from mock import patch
+from mock import Mock, patch
 
 
 from pyramid import testing
+
+class MongoDBRegistrationBackendTests(unittest.TestCase):
+
+    def setUp(self):
+        self.settings = {"mongodb.url":"mongodb://localhost",
+                "mongodb.db_name":"testdb"}
+        self.config = Mock(spec=pyramid.config.Configurator)
+        self.config.registry = Mock(spec=pyramid.registry.Registry)
+        self.config.registry.settings = {}
+
+    def tearDown(self):
+        testing.tearDown()
+
+    @patch("pymongo.Connection")
+    def test_init(self, connection_mock):
+        conn = connection_mock.instance()
+        connection_mock.return_value = conn
+        backend = MongoDBRegistrationBackend(self.settings, self.config)
+
+        self.assertEquals(self.config.registry.settings["mongodb_conn"], conn)
+        self.assertEquals(backend.db, conn[self.settings["mongodb.db_name"]])
+
+    def test_password_hash(self):
+        p = "password"
+        h = _hash_pw(p)
+        self.assertTrue(_check_pw(p, h))
+
+    @patch("pymongo.Connection")
+    def test_add_user(self, connection_mock):
+        # Test bad username
+        struct = {"username":"BAD"}
+        conn = connection_mock.instance()
+        connection_mock.return_value = conn
+        db = conn[self.settings["mongodb.db_name"]]
+        backend = MongoDBRegistrationBackend(self.settings, self.config)
+        self.assertRaises(colander.Invalid, backend.add_user, struct)
+        # Test good username that already exists in DB
+        struct["username"] = "good"
+        db.users.find_one.return_value = {"username":struct["username"]}
+        self.assertRaises(colander.Invalid, backend.add_user, struct)
+        # Test good, available username, writing it to DB
+        db.users.find_one.return_value = None
+        backend.add_user(struct)
+        db.users.insert.assert_called_once_with({"username":struct["username"]},
+                safe=True)
+        # Test writing bcrypted password value to DB
+        struct["password"] = "testpassword"
+        hashed_pw = _hash_pw(struct["password"])
+        # patch bcrypt module to return the hash we just generated
+        with patch("pyramid_registration.mongodb.bcrypt.hashpw"):
+            mongodb.bcrypt.hashpw.return_value = hashed_pw
+            backend.add_user(struct)
+            db.users.insert.assert_called_with({"username":struct["username"],"password":hashed_pw},
+                    safe=True)
+        # Test writing email to DB
+        struct["email"] = "testemail@example.com"
+        del struct["password"]
+        backend.add_user(struct)
+        db.users.insert.assert_called_with({"username":struct["username"],"email":struct["email"]},
+                safe=True)
+
+
+
 
 class ViewTests(unittest.TestCase):
     def setUp(self):

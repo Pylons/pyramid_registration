@@ -9,13 +9,22 @@ from pyramid.events import NewRequest
 from pyramid_registration.interfaces import IRegistrationBackend
 from zope.interface import implements
 
-class AddUserSchema(colander.MappingSchema):
+@colander.deferred
+def username_validator(node, kw):
     regex = r'^[A-Za-z](?=[A-Za-z0-9_.]{3,31}$)[a-zA-Z0-9_]*\.?[a-zA-Z0-9_]*$'
+    msg = "Use 4 to 32 characters and start with a letter. You may use letters, numbers, underscores, and one dot (.)"
+
+    db = kw.get('db')
+    username = kw.get('username')
+    assert db
+    regex_validator = colander.Regex(regex, msg=msg)
+    regex_validator(node, username)
+    if db.users.find_one({"username":username}):
+        raise colander.Invalid(node, "Username %s is in use" % username)
+
+class AddUserSchema(colander.MappingSchema):
     username = colander.SchemaNode(colander.String(),
-        validator=colander.Regex(regex,
-            msg="Use 4 to 32 characters and start with a letter."\
-            "You may use letters, numbers, underscores, and one dot (.)"),
-        missing=None)
+        validator=username_validator, missing=None)
     email = colander.SchemaNode(colander.String(), validator=colander.Email(),
             missing=None)
     password = colander.SchemaNode(colander.String(), missing=None)
@@ -128,7 +137,8 @@ class MongoDBRegistrationBackend(object):
     def add_user(self, struct):
         """ Link an external account to this user """
 
-        schema = AddUserSchema()
+        schema = AddUserSchema().bind(db=self.db,
+                username=struct.get("username"))
         # invalid exception will bubble up for caller to handle
         d = schema.deserialize(struct)
 
@@ -153,7 +163,7 @@ class MongoDBRegistrationBackend(object):
                 linked_account["last_name"] = d["facebook_last_name"]
             new_user["linked_accounts":[linked_account]]
 
-        self.db.insert(new_user, safe=True)
+        self.db.users.insert(new_user, safe=True)
 
     def activate(self, token):
         """ Mark account as activated. For simple auth (username & password)
