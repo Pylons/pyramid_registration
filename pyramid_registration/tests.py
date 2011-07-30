@@ -16,7 +16,8 @@ from mock import Mock, patch
 
 from pyramid import testing
 
-class MongoDBRegistrationBackendTests(unittest.TestCase):
+class MongoDBRegistrationBackendUnitTests(unittest.TestCase):
+    """ Unit tests for MongoDBRegistrationBackend class """
 
     def setUp(self):
         self.settings = {"mongodb.url":"mongodb://localhost",
@@ -96,6 +97,20 @@ class MongoDBRegistrationBackendTests(unittest.TestCase):
 
             # Test that verify has tried to purge the expired tokens
             mongodb._purge_old_tokens.assert_called_once_with(db, oid)
+
+    @patch("pymongo.Connection")
+    def test_activate(self, connection_mock):
+        conn = connection_mock.instance()
+        connection_mock.return_value = conn
+        db = conn[self.settings["mongodb.db_name"]]
+        backend = MongoDBRegistrationBackend(self.settings, self.config)
+        utcnow = datetime.datetime.utcnow()
+        with patch('datetime.datetime'):
+            datetime.datetime.utcnow.return_value = utcnow
+            backend.activate("token")
+            db.users.update.assert_called_once_with({"access_tokens.token":"token"},
+                    {"$set":{"activated_timestamp":utcnow}}, safe=True)
+
 
 
 
