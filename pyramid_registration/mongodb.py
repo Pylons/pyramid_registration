@@ -12,9 +12,10 @@ from zope.interface import implements
 class AddUserSchema(colander.MappingSchema):
     regex = r'^[A-Za-z](?=[A-Za-z0-9_.]{3,31}$)[a-zA-Z0-9_]*\.?[a-zA-Z0-9_]*$'
     username = colander.SchemaNode(colander.String(),
-        validator=colander.Regex(regex, msg="Use 4 to 32 characters and start
-            with a letter. You may use letters, numbers, underscores, and one
-            dot (.)"), missing=None)
+        validator=colander.Regex(regex,
+            msg="Use 4 to 32 characters and start with a letter."\
+            "You may use letters, numbers, underscores, and one dot (.)"),
+        missing=None)
     email = colander.SchemaNode(colander.String(), validator=colander.Email(),
             missing=None)
     password = colander.SchemaNode(colander.String(), missing=None)
@@ -76,6 +77,15 @@ def _store_access_token(db, user_id, token):
             },
             safe=True)
 
+def make_temp_username(db):
+    """ Return a randomly generated username which is not already in the
+    database.
+    This is necesary because users must have unique usernames at all times """
+    while True:
+        username = _generate_temp_username()
+        if not lookup_username(db, username): break
+    return username
+
 class MongoDBRegistrationBackend(object):
     """ MongoDB implementation of RegistrationBackend """
     implements(IRegistrationBackend)
@@ -88,6 +98,7 @@ class MongoDBRegistrationBackend(object):
             db_name = settings['mongodb.db_name']
             db = settings['mongodb_conn'][db_name]
             event.request.db = db
+        db_uri = settings['mongodb.url']
         conn = pymongo.Connection(db_uri)
         self.db = conn[settings["mongodb.db_name"]]
         def create_indexes(connection):
