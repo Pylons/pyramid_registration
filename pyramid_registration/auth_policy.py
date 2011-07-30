@@ -2,7 +2,7 @@ from pyramid.interfaces import IAuthenticationPolicy
 from pyramid.security import Authenticated, Everyone
 from zope.interface import implements
 
-class PyramidRegAuthenticationPolicy(object):
+class PyramidRegistrationAuthenticationPolicy(object):
     implements(IAuthenticationPolicy)
     def __init__(self, backend):
         self.backend = backend
