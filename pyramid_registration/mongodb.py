@@ -1,9 +1,43 @@
+import datetime
 import pymongo
+import random
+
 from pyramid.events import subscriber
 from pyramid.events import NewRequest
 
 from zope.interface import implements
 from pyramid_registration.interfaces import IRegistrationBackend
+
+def _lookup_access_token(db, access_token):
+    """ Check whether given token already exists in DB """
+    return db.users.find_one({"access_tokens.token":access_token})
+
+def _generate_access_token():
+    """ Generate new access_token """
+    return ''.join(random.choice(string.ascii_uppercase + string.digits)
+            for x in range(32))
+
+def lookup_username(db, username):
+    return db.users.find_one({"username":username})
+
+def _generate_temp_username():
+    """ Generate a temporary username """
+    return "user%d" % random.randint(0, 99999999)
+
+def _purge_old_tokens(db, user_id, timedelta=None):
+    # pull any tokens older than timedelta.
+    if not timedelta:
+        timedelta = datetime.timedelta(days=30)
+    expiry = datetime.datetime.utcnow() - timedelta
+    db.users.update({"_id":user_id},
+            {"$pull":{
+                "access_tokens":
+                    {"timestamp":
+                        {"$lte":expiry}
+                    }
+                }
+            },
+            safe=True)
 
 class MongoDBRegistrationBackend(object):
     """ MongoDB implementation of RegistrationBackend """
@@ -20,6 +54,7 @@ class MongoDBRegistrationBackend(object):
             event.request.db = db
         db_uri = settings['mongodb.url']
         conn = pymongo.Connection(db_uri)
+        self.db = settings["mongodb_conn"][settings["mongodb.db_name"]]
         def create_indexes(connection):
             """ Create the indexes.
             See http://api.mongodb.org/python/current/api/pymongo/collection.html#pymongo.collection.Collection.create_index"""
@@ -54,4 +89,10 @@ class MongoDBRegistrationBackend(object):
         pass
 
     def verify_access_token(self, token):
-        pass
+        """ Purge expired tokens for this user, then look up against current tokens
+        to check validity """
+        user_doc = _lookup_access_token(self.db, token)
+        if not user_doc: return None
+        _purge_old_tokens(self.db, user_doc["_id"])
+
+        return _lookup_access_token(self.db, token)
