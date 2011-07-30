@@ -4,13 +4,21 @@ import random
 
 from pyramid.events import subscriber
 from pyramid.events import NewRequest
+from pymongo.son import SON
 
 from zope.interface import implements
 from pyramid_registration.interfaces import IRegistrationBackend
 
+class MongoDBUser(SON):
+
+    def get_id(self):
+        return self["_id"]
+
+
 def _lookup_access_token(db, access_token):
     """ Check whether given token already exists in DB """
-    return db.users.find_one({"access_tokens.token":access_token})
+    return db.users.find_one({"access_tokens.token":access_token},
+            as_class=MongoDBUser)
 
 def _generate_access_token():
     """ Generate new access_token """
@@ -18,7 +26,7 @@ def _generate_access_token():
             for x in range(32))
 
 def lookup_username(db, username):
-    return db.users.find_one({"username":username})
+    return db.users.find_one({"username":username}, as_class=MongoDBUser)
 
 def _generate_temp_username():
     """ Generate a temporary username """
