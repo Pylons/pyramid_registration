@@ -2,12 +2,9 @@ import datetime
 import pymongo
 import random
 
-from pyramid.events import subscriber
 from pyramid.events import NewRequest
-from pymongo.son import SON
-
-from zope.interface import implements
 from pyramid_registration.interfaces import IRegistrationBackend
+from zope.interface import implements
 
 def _lookup_access_token(db, access_token):
     """ Check whether given token already exists in DB """
