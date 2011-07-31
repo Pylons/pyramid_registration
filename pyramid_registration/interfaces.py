@@ -24,10 +24,11 @@ class IRegistrationBackend(Interface):
         """
 
     def activate(self, token):
-        """ Mark user as activated.
+        """ Mark an already-issued token as activated.
 
         ``token``
-        The token linked to the account to activate. """
+        The token linked to the account to activate. Tokens are issed by the
+        issue_access_token() method. """
 
     def verify_access_token(self, token):
         """ Verify whether access token is associated with a valid account and is not
