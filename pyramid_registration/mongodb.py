@@ -233,7 +233,8 @@ class MongoDBRegistrationBackend(object):
         """ Look up a user document by either username or email, if it exists
         check the password against the hashed password in the database.
 
-        If there is a match, return the user document.
+        If there is a match, return the user document. This is an optimization,
+        only a True value is mandated by the interface.
         Otherwise, return False.
 
         ``username_or_email``
