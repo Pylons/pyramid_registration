@@ -231,6 +231,26 @@ class MongoDBRegistrationBackendIntegrationTests(unittest.TestCase):
         userid = backend.verify_access_token(access_token)
         self.assertEquals(userid, str(user_doc["_id"]))
 
+    def test_simple_login(self):
+        backend = MongoDBRegistrationBackend(self.settings, self.config)
+        # Test good, available username, writing it to DB
+        password = "testpassword"
+        struct = {"username":"goodusername", "password":password, "email":"testemail@example.com"}
+        backend.add_user(struct)
+        # Now lets verify we can retrieve it correctly with a simple_login
+        user_doc = backend.simple_login(struct["username"], struct["password"])
+        self.assertEquals(struct["username"], user_doc["username"])
+        self.assertEquals(struct["email"], user_doc["email"])
+        # Same again but by email not username
+        user_doc = backend.simple_login(struct["email"], struct["password"])
+        self.assertEquals(struct["username"], user_doc["username"])
+        self.assertEquals(struct["email"], user_doc["email"])
+        # Failure case: bad password
+        user_doc = backend.simple_login(struct["email"], "wrongpassword")
+        self.assertFalse(user_doc)
+
+
+
 
 class ViewTests(unittest.TestCase):
     def setUp(self):
