@@ -42,3 +42,17 @@ class IRegistrationBackend(Interface):
         ``user_id``
         The user_id of the account to issue the token for.
         """
+
+    def simple_login(self, username_or_email, password):
+        """ Look up a user by either username or email, if it exists
+        check the password against the hashed password in the database.
+
+        If credentials are valid and user exists and is enabled, return a True
+        value. Otherwise, return False.
+
+        ``username_or_email``
+        A string containing either a username or email for this account.
+
+        ``password``
+        A string containing the plaintext password for this account.
+        """
