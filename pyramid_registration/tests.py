@@ -132,6 +132,26 @@ class MongoDBRegistrationBackendUnitTests(unittest.TestCase):
             backend.issue_access_token(uid)
             db.users.find_one.assert_called_with({"access_tokens.token":token})
 
+    @patch("pymongo.Connection")
+    def test_simple_login(self, connection_mock):
+        conn = connection_mock.instance()
+        connection_mock.return_value = conn
+        db = conn[self.settings["mongodb.db_name"]]
+        backend = MongoDBRegistrationBackend(self.settings, self.config)
+
+        password = "testpassword"
+        stored_user = {"username":"testuser",
+                "password":_hash_pw("testpassword"),
+                "email":"testemail@example.com"}
+
+        # Test situation where user exists and we do password hash comparison
+        db.users.find_one.return_value = stored_user
+        self.assertTrue(backend.simple_login(stored_user["username"], password))
+
+        # Test situation where user does not exist
+        db.users.find_one.return_value = False
+        self.assertFalse(backend.simple_login(stored_user["username"], password))
+
 class MongoDBRegistrationBackendIntegrationTests(unittest.TestCase):
     """ Integration tests for MongoDBRegistrationBackend class. These talk to a
     real MongoDB server. """
