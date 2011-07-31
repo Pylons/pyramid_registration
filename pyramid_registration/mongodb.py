@@ -229,7 +229,7 @@ class MongoDBRegistrationBackend(object):
 
         return token
 
-    def simple_login(username_or_email, password):
+    def simple_login(self, username_or_email, password):
         """ Look up a user document by either username or email, if it exists
         check the password against the hashed password in the database.
 
@@ -243,9 +243,9 @@ class MongoDBRegistrationBackend(object):
         A string containing the plaintext password for this account.
         """
         user_doc = self.db.users.find_one({"$or":[{"email":username_or_email},
-            {"username":username_or_email}])
+            {"username":username_or_email}]})
 
-        if _check_pw(password, user_doc["password"]):
+        if user_doc and _check_pw(password, user_doc["password"]):
             return user_doc
         return False
 
