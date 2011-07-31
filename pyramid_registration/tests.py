@@ -2,6 +2,7 @@ import colander
 import datetime
 import json
 import mongodb
+import providers
 import pyramid.config
 import pyramid.registry
 import pymongo
@@ -259,3 +260,16 @@ class ViewTests(unittest.TestCase):
     def tearDown(self):
         testing.tearDown()
 
+
+class ProviderTests(unittest.TestCase):
+    def setUp(self):
+        self.config = testing.setUp()
+
+    def tearDown(self):
+        testing.tearDown()
+
+    def test_facebook_provider(self):
+        """ Integration test (requires Internet connectivity) for Facebook
+        provider """
+        access_token = "bad token"
+        self.assertFalse(providers.facebook_provider(access_token))
