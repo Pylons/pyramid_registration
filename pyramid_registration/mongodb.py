@@ -129,6 +129,9 @@ class MongoDBRegistrationBackend(object):
                     {"tuple":("username", pymongo.DESCENDING),
                         "collection":"users",
                         "kwargs":{"unique":True}},
+                    {"tuple":("email", pymongo.DESCENDING),
+                        "collection":"users",
+                        "kwargs":{"unique":True}},
                     {"tuple":("linked_accounts.id", pymongo.DESCENDING),
                         "collection":"users",
                         "kwargs":{"unique":True}},
@@ -225,4 +228,24 @@ class MongoDBRegistrationBackend(object):
         _store_access_token(self.db, user_id, token)
 
         return token
+
+    def simple_login(username_or_email, password):
+        """ Look up a user document by either username or email, if it exists
+        check the password against the hashed password in the database.
+
+        If there is a match, return the user document.
+        Otherwise, return False.
+
+        ``username_or_email``
+        A string containing either a username or email for this account.
+
+        ``password``
+        A string containing the plaintext password for this account.
+        """
+        user_doc = self.db.users.find_one({"$or":[{"email":username_or_email},
+            {"username":username_or_email}])
+
+        if _check_pw(password, user_doc["password"]):
+            return user_doc
+        return False
 
