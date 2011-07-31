@@ -169,7 +169,7 @@ class MongoDBRegistrationBackend(object):
                 linked_account["first_name"] = d["facebook_first_name"]
             if d["facebook_last_name"]:
                 linked_account["last_name"] = d["facebook_last_name"]
-            new_user["linked_accounts":[linked_account]]
+            new_user["linked_accounts"] = [linked_account]
 
         r = self.db.users.insert(new_user, safe=True)
 
