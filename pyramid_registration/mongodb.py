@@ -147,7 +147,17 @@ class MongoDBRegistrationBackend(object):
         config.add_subscriber(add_mongo_db, NewRequest)
 
     def add_user(self, struct):
-        """ Link an external account to this user """
+        """ Add a new user to the registration system. Adding a user creates an
+        account entry in the storage backend, but does not activate the account
+        nor does it issue a token for it.
+
+        ``struct``
+        A dictionary-like object which must be verifiable by AddUserSchema.
+        Since this method supports both simple auth (username/email and password
+        persisted locally) and federated auth (authentication details maintained
+        by remote provider such as Facebook or google) all parameters are
+        option.
+        """
 
         schema = AddUserSchema().bind(db=self.db,
                 username=struct.get("username"))
