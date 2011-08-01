@@ -1,7 +1,7 @@
 from pyramid.config import Configurator
 from pyramid_registration.resources import Root
 from pyramid_registration.auth_policy import PyramidRegistrationAuthenticationPolicy
-from pyramid_registration.views import facebook_registration, facebook_login, simple_registration, simple_login
+from pyramid_registration.views import facebook_registration, facebook_login, simple_registration_post, simple_registration_get, simple_login_post, simple_login_get
 
 def main(global_config, **settings):
     """ This function returns a Pyramid WSGI application.
@@ -19,10 +19,18 @@ def main(global_config, **settings):
     config.add_route('facebook_registration', '/registration/facebook',
             view=facebook_registration, factory=backend)
     config.add_route('facebook_login', '/login/facebook', view=facebook_login, factory=backend)
-    config.add_route('simple_registration', '/registration/simple',
-            view=simple_registration, factory=backend,
-            renderer="pyramid_registration:templates/simple_reg.mak")
-    config.add_route('simple_login', '/login/simple', view=simple_login, factory=backend)
+    config.add_route('simple_registration_post', '/registration/simple',
+            view=simple_registration_post, factory=backend,
+            renderer="pyramid_registration:templates/simple_reg.mak",
+            request_method="POST")
+    config.add_route('simple_registration_get', '/registration/simple',
+            view=simple_registration_get, factory=backend,
+            renderer="pyramid_registration:templates/simple_reg.mak",
+            request_method="GET")
+    config.add_route('simple_login_post', '/login/simple', view=simple_login_post,
+            factory=backend, request_method="POST")
+    config.add_route('simple_login_get', '/login/simple', view=simple_login_post,
+            factory=backend, request_method="GET")
     # XXX _set_authentication_policy will be made public as
     # set_authentication_policy soon.
     config._set_authentication_policy(PyramidRegistrationAuthenticationPolicy(backend))

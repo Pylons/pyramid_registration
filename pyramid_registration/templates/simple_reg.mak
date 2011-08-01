@@ -2,6 +2,9 @@
 <head>
 </head>
 <body>
+%if created:
+Your account has been suggessfully created! You may now log in.
+%else:
 <h2>Simple Registration Form</h2>
 % if errors:
 	% for e in errors:
@@ -29,5 +32,6 @@
 </tr>
 </table>
 </form>
+%endif
 </body>
 </html>
