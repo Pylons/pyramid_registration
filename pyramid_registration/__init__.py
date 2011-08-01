@@ -20,7 +20,8 @@ def main(global_config, **settings):
             view=facebook_registration, factory=backend)
     config.add_route('facebook_login', '/login/facebook', view=facebook_login, factory=backend)
     config.add_route('simple_registration', '/registration/simple',
-            view=simple_registration, factory=backend)
+            view=simple_registration, factory=backend,
+            renderer="pyramid_registration:templates/simple_reg.mak")
     config.add_route('simple_login', '/login/simple', view=simple_login, factory=backend)
     # XXX _set_authentication_policy will be made public as
     # set_authentication_policy soon.

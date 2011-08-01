@@ -34,9 +34,10 @@ def simple_registration(backend, request):
 
     if username and password and email:
         backend.add_user({"username":username,"password":password,"email":email})
-        token = backend.issues_access_token
+        token = backend.issues_access_token()
+        return {"token":token}
 
-    return Response("foo")
+    return {}
 
 
 def simple_login(backend, request):

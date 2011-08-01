@@ -19,3 +19,14 @@ def facebook_provider(fb_access_token):
         return False
     return body
 
+def google_provider(google_access_token):
+    """ Performs a Google OAuth2 API request with minimal scope (enough to get
+    email address). On success, the decoded JSON response is returned. On
+    failure, False is returned.
+    See https://sites.google.com/site/oauthgoog/Home/emaildisplayscope
+
+    ``google_access_token``
+    A Google OAuth2 access token.
+    """
+    pass
+
