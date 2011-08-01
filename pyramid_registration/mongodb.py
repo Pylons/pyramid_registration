@@ -222,7 +222,7 @@ class MongoDBRegistrationBackend(object):
         """ Create a unique access_token and associate it with the user in the DB,
         returning resulting string. Note that the token is issued in an
         unactivated state. It must be explicitly activated via the activate()
-        method.
+        method. Return value of this method is the token issued.
 
         ``user_id``
         User ID (of type ObjectID) of the user account to issue and access token
