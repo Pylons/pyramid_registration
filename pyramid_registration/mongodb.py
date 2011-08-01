@@ -102,6 +102,16 @@ def make_temp_username(db):
         if not lookup_username(db, username): break
     return username
 
+def make_access_token(db):
+    """ Return a randomly generated access token which is not already in the
+    database. This is necessary because access tokens must be unique. """
+    # XXX potential race between checking & generation, but very unlikely to
+    # ever hit. Unique index protects a duplicate token ever being issued.
+    while True:
+        token = _generate_access_token()
+        if not _lookup_access_token(db, token): break
+    return token
+
 class MongoDBRegistrationBackend(object):
     """ MongoDB implementation of RegistrationBackend """
     implements(IRegistrationBackend)
@@ -110,6 +120,8 @@ class MongoDBRegistrationBackend(object):
         return self
 
     def __init__(self, settings, config):
+        self.settings = settings
+        self.config = config
         # Make request.db be a reference to MongoDB Database handle
         def add_mongo_db(event):
             settings = event.request.registry.settings
@@ -125,7 +137,7 @@ class MongoDBRegistrationBackend(object):
             indexes = (
                     {"tuple":("access_tokens.token", pymongo.DESCENDING),
                         "collection":"users",
-                        },
+                        "kwargs":{"unique":True}},
                     {"tuple":("username", pymongo.DESCENDING),
                         "collection":"users",
                         "kwargs":{"unique":True}},
@@ -148,8 +160,10 @@ class MongoDBRegistrationBackend(object):
 
     def add_user(self, struct):
         """ Add a new user to the registration system. Adding a user creates an
-        account entry in the storage backend, but does not activate the account
-        nor does it issue a token for it.
+        account entry in the storage backend and issues a new token for it, but
+        does not activate the token. Return value is access token issued for this
+        account.
+
 
         ``struct``
         A dictionary-like object which must be verifiable by AddUserSchema.
@@ -184,7 +198,15 @@ class MongoDBRegistrationBackend(object):
                 linked_account["last_name"] = d["facebook_last_name"]
             new_user["linked_accounts"] = [linked_account]
 
+        access_token = make_access_token(self.db)
+        new_user["access_tokens"] = [
+                    {"token":access_token,
+                     "created_timestamp":datetime.datetime.utcnow()
+                    }
+                ]
+
         r = self.db.users.insert(new_user, safe=True)
+        return access_token
 
     def activate(self, token):
         """ Mark account as activated. For simple auth (username & password)
@@ -229,11 +251,7 @@ class MongoDBRegistrationBackend(object):
         for.
         """
 
-        # XXX potential race between checking & generation, but very unlikely to
-        # ever hit.
-        while True:
-            token = _generate_access_token()
-            if not _lookup_access_token(self.db, token): break
+        token = make_access_token(self.db)
         _store_access_token(self.db, user_id, token)
 
         return token

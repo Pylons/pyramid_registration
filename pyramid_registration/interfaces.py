@@ -14,8 +14,10 @@ class IRegistrationBackend(Interface):
 
     def add_user(self, struct):
         """ Add a new user to the registration system. Adding a user creates an
-        account entry in the storage backend, but does not activate the account
-        nor does it issue a token for it.
+        account entry in the storage backend and issues an access token for it,
+        but does not activate the access token. Access token must be explicitly
+        activated by activate() method. Return value is access token issued for this
+        account.
 
         ``struct``
         User structure to store. It is up to the backend implementation to

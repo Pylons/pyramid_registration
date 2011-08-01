@@ -60,24 +60,34 @@ class MongoDBRegistrationBackendUnitTests(unittest.TestCase):
         self.assertRaises(colander.Invalid, backend.add_user, struct)
         # Test good, available username, writing it to DB
         db.users.find_one.return_value = None
-        backend.add_user(struct)
-        db.users.insert.assert_called_once_with({"username":struct["username"]},
-                safe=True)
-        # Test writing bcrypted password value to DB
-        struct["password"] = "testpassword"
-        hashed_pw = _hash_pw(struct["password"])
-        # patch bcrypt module to return the hash we just generated
-        with patch("pyramid_registration.mongodb.bcrypt.hashpw"):
-            mongodb.bcrypt.hashpw.return_value = hashed_pw
-            backend.add_user(struct)
-            db.users.insert.assert_called_with({"username":struct["username"],"password":hashed_pw},
-                    safe=True)
-        # Test writing email to DB
-        struct["email"] = "testemail@example.com"
-        del struct["password"]
-        backend.add_user(struct)
-        db.users.insert.assert_called_with({"username":struct["username"],"email":struct["email"]},
-                safe=True)
+        utcnow = datetime.datetime.utcnow()
+        with patch("pyramid_registration.mongodb.make_access_token"):
+            with patch("datetime.datetime"):
+                testtoken = "testtoken"
+                datetime.datetime.utcnow.return_value = utcnow
+                mongodb.make_access_token.return_value = testtoken
+                
+                backend.add_user(struct)
+                db.users.insert.assert_called_once_with({"username":struct["username"],
+                    "access_tokens":[{"created_timestamp":utcnow,"token":testtoken}]},
+                        safe=True)
+                # Test writing bcrypted password value to DB
+                struct["password"] = "testpassword"
+                hashed_pw = _hash_pw(struct["password"])
+                # patch bcrypt module to return the hash we just generated
+                with patch("pyramid_registration.mongodb.bcrypt.hashpw"):
+                    mongodb.bcrypt.hashpw.return_value = hashed_pw
+                    backend.add_user(struct)
+                    db.users.insert.assert_called_with({"username":struct["username"],"password":hashed_pw,
+                        "access_tokens":[{"created_timestamp":utcnow,"token":testtoken}]},
+                            safe=True)
+                # Test writing email to DB
+                struct["email"] = "testemail@example.com"
+                del struct["password"]
+                backend.add_user(struct)
+                db.users.insert.assert_called_with({"username":struct["username"],"email":struct["email"], 
+                    "access_tokens":[{"created_timestamp":utcnow,"token":testtoken}]},
+                        safe=True)
 
     @patch("pymongo.Connection")
     def test_verify_access_token(self, connection_mock):
