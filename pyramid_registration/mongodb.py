@@ -12,7 +12,7 @@ from zope.interface import implements
 @colander.deferred
 def username_validator(node, kw):
     regex = r'^[A-Za-z](?=[A-Za-z0-9_.]{3,31}$)[a-zA-Z0-9_]*\.?[a-zA-Z0-9_]*$'
-    msg = "Use 4 to 32 characters and start with a letter. You may use letters, numbers, underscores, and one dot (.)"
+    msg = "Username must be 4 to 32 characters and start with a letter. You may use letters, numbers, underscores, and one dot (.)"
 
     db = kw.get('db')
     username = kw.get('username')

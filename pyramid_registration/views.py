@@ -1,3 +1,4 @@
+import colander
 from pyramid.response import Response
 """ Views """
 
@@ -28,16 +29,30 @@ def simple_registration(backend, request):
     Register a user with username and password.
 
     """
-    username = request.params.get("username")
-    password = request.params.get("password")
-    email = request.params.get("email")
+    username = request.params.get("username", "")
+    password = request.params.get("password", "")
+    password_confirm = request.params.get("password-confirm", "")
+    email = request.params.get("email", "")
 
-    if username and password and email:
-        backend.add_user({"username":username,"password":password,"email":email})
-        token = backend.issues_access_token()
-        return {"token":token}
+    errors = []
+    if request.method == "POST":
+        if password != password_confirm:
+            errors.append("Password and password confirm do not match")
+        if not password or not password_confirm:
+            errors.append("Must supply a password")
+        if not email:
+            errors.append("Must supply an email")
+        try:
+            backend.add_user({"username":username,"password":password,"email":email})
+        except colander.Invalid, e:
+            for i in e:
+                if isinstance(i, str):
+                    errors.append(i)
+        if not errors:
+            token = backend.issue_access_token()
+            return {"token":token}
 
-    return {}
+    return {"errors":errors}
 
 
 def simple_login(backend, request):
