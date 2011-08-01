@@ -230,7 +230,7 @@ class MongoDBRegistrationBackend(object):
         """
 
         # XXX potential race between checking & generation, but very unlikely to
-        # ever hit. 
+        # ever hit.
         while True:
             token = _generate_access_token()
             if not _lookup_access_token(self.db, token): break
