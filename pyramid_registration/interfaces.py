@@ -40,7 +40,8 @@ class IRegistrationBackend(Interface):
 
     def issue_access_token(self, user_id):
         """ Generate a new random access token
-        and associate it with the user_id in the database.
+        and associate it with the user_id in the database. Returns the token
+        issued.
 
         ``user_id``
         The user_id of the account to issue the token for.
