@@ -125,7 +125,7 @@ class MongoDBRegistrationBackend(object):
             indexes = (
                     {"tuple":("access_tokens.token", pymongo.DESCENDING),
                         "collection":"users",
-                        "kwargs":{"unique":True}},
+                        },
                     {"tuple":("username", pymongo.DESCENDING),
                         "collection":"users",
                         "kwargs":{"unique":True}},
