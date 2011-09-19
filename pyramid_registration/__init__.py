@@ -29,7 +29,7 @@ def main(global_config, **settings):
             request_method="GET")
     config.add_route('simple_login_post', '/login/simple', view=simple_login_post,
             factory=backend, request_method="POST")
-    config.add_route('simple_login_get', '/login/simple', view=simple_login_post,
+    config.add_route('simple_login_get', '/login/simple', view=simple_login_get,
             factory=backend, request_method="GET")
     # XXX _set_authentication_policy will be made public as
     # set_authentication_policy soon.
