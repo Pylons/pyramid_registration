@@ -1,6 +1,7 @@
 import bcrypt
 import colander
 import datetime
+import deform
 import pymongo
 import random
 import string
@@ -16,16 +17,28 @@ def username_validator(node, kw):
 
     db = kw.get('db')
     username = kw.get('username')
-    assert db
-    regex_validator = colander.Regex(regex, msg=msg)
-    regex_validator(node, username)
-    if db.users.find_one({"username":username}):
-        raise colander.Invalid(node, "Username %s is in use" % username)
+    if username:
+        assert db
+        regex_validator = colander.Regex(regex, msg=msg)
+        regex_validator(node, username)
+        if db.users.find_one({"username":username}):
+            raise colander.Invalid(node, "Username %s is in use" % username)
+
+@colander.deferred
+def email_validator(node, kw):
+    db = kw.get('db')
+    email = kw.get('email')
+    if email:
+        assert db
+        email_validator = colander.Email()
+        email_validator(node, email)
+        if db.users.find_one({"email":email}):
+            raise colander.Invalid(node, "Email %s is in use" % email)
 
 class AddUserSchema(colander.MappingSchema):
     username = colander.SchemaNode(colander.String(),
         validator=username_validator, missing=None)
-    email = colander.SchemaNode(colander.String(), validator=colander.Email(),
+    email = colander.SchemaNode(colander.String(), validator=email_validator,
             missing=None)
     password = colander.SchemaNode(colander.String(),
             validator=colander.Length(min=6), missing=None)
@@ -170,17 +183,17 @@ class MongoDBRegistrationBackend(object):
         Since this method supports both simple auth (username/email and password
         persisted locally) and federated auth (authentication details maintained
         by remote provider such as Facebook or google) all parameters are
-        option.
+        optional.
         """
 
         schema = AddUserSchema().bind(db=self.db,
-                username=struct.get("username"))
+                username=struct.get("username"), email=struct.get("email"))
         # invalid exception will bubble up for caller to handle
         d = schema.deserialize(struct)
         new_user = {}
         username = d["username"]
         if not username:
-            username = make_temp_username()
+            username = make_temp_username(self.db)
         new_user["username"] = username
 
         if d["password"]:

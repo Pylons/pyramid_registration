@@ -1,10 +1,20 @@
 import colander
+import deform
+from mongodb import AddUserSchema, email_validator
 from pyramid.response import Response
+
+class SignupSchema(colander.MappingSchema):
+    email = colander.SchemaNode(colander.String(), validator=email_validator,
+            widget=deform.widget.TextInputWidget(size=20))
+    password = colander.SchemaNode(colander.String(),
+            validator=colander.Length(min=6),
+            widget=deform.widget.PasswordWidget(size=20))
+
 """ Views """
 
 def facebook_registration(backend, request):
     """ /registration/facebook view callable.
-    
+
     If supplied with an access_token request parameter, assumes client has
     already performed the FB login dance.
 
@@ -27,7 +37,9 @@ def simple_registration_get(backend, request):
     """ /registration/simple view callable for GET method.
     Renders registration template.
     """
-    return {"errors":[], "created":False}
+    schema = SignupSchema()
+    form = deform.Form(schema, buttons=('create',))
+    return {"form":form.render()}
 
 def simple_registration_post(backend, request):
     """ /registration/simple view callable for POST method.
@@ -35,30 +47,17 @@ def simple_registration_post(backend, request):
     Register a user with username and password.
 
     """
-    # XXX move to deform
-    username = request.params.get("username", "")
-    password = request.params.get("password", "")
-    password_confirm = request.params.get("password-confirm", "")
-    email = request.params.get("email", "")
-
-    errors = []
-    if password != password_confirm:
-        errors.append("Password and password confirm do not match")
-    if not password or not password_confirm:
-        errors.append("Must supply a password")
-    if not email:
-        errors.append("Must supply an email")
+    controls = request.POST.items()
     try:
-        backend.add_user({"username":username,"password":password,"email":email})
-    except colander.Invalid, e:
-        for i in e:
-            if isinstance(i, unicode) or isinstance(i, str):
-                errors.append(i)
-    if not errors:
-        return {"errors":errors, "created":True}
-
-    return {"errors":errors, "created":False}
-
+        schema = SignupSchema()
+        form = deform.Form(schema, buttons=('submit',))
+        form.validate(controls)
+        schema.bind(db=request.db, email=request.POST.get("email"))
+        d = schema.deserialize(request.POST)
+        backend.add_user({"password":d["password"], "email":d["email"]})
+    except deform.ValidationFailure, e:
+        return {'form':e.render()}
+    return {'form':'OK'}
 
 def simple_login_post(backend, request):
     """ /login/simple view callable for POST method requests.
